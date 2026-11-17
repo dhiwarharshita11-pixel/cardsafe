@@ -275,9 +275,12 @@ footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);fo
 
 <script>
 // Auto-detect API location (works whether served directly or via file:/// or other port)
-const API = window.location.protocol.startsWith('http')
-  ? (window.location.port === '5000' ? '/api' : 'http://localhost:5000/api')
-  : 'http://localhost:5000/api';
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API = (!window.location.protocol.startsWith('http'))
+  ? 'http://localhost:5000/api'
+  : (isLocalhost && window.location.port !== '5000' && window.location.port !== ''
+      ? 'http://localhost:5000/api'
+      : '/api');
 
 let state = {
   logged: false,
