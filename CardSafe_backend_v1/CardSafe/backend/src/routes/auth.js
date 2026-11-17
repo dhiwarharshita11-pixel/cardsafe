@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { z } from 'zod';
+import { query } from '../config/db.js';
+const r=Router();
+const schema=z.object({name:z.string().min(2).max(120),email:z.string().email(),password:z.string().min(8).max(72)});
+r.post('/register',async(req,res)=>{try{const d=schema.parse(req.body);const exists=await query('SELECT id FROM users WHERE email=$1',[d.email]);if(exists.rowCount)return res.status(409).json({message:'Email already registered'});const hash=await bcrypt.hash(d.password,12);const u=(await query('INSERT INTO users(name,email,password_hash) VALUES($1,$2,$3) RETURNING id,name,email,role',[d.name,d.email,hash])).rows[0];const token=jwt.sign({id:u.id,email:u.email,role:u.role},process.env.JWT_SECRET,{expiresIn:'2h'});res.status(201).json({user:u,token});}catch(e){res.status(400).json({message:e.message});}});
+r.post('/login',async(req,res)=>{try{const d=z.object({email:z.string().email(),password:z.string()}).parse(req.body);const u=(await query('SELECT * FROM users WHERE email=$1',[d.email])).rows[0];if(!u||!(await bcrypt.compare(d.password,u.password_hash)))return res.status(401).json({message:'Invalid email or password'});const token=jwt.sign({id:u.id,email:u.email,role:u.role},process.env.JWT_SECRET,{expiresIn:'2h'});res.json({user:{id:u.id,name:u.name,email:u.email,role:u.role},token});}catch(e){res.status(400).json({message:e.message});}});
+export default r;

@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CardSafe — Two-Way Lost & Found Debit Card Security</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f0f4f8;--surface:#fff;--border:#dde3ea;--text:#172033;--muted:#607086;--accent:#2563eb;--accent2:#1d4ed8;--danger:#dc2626;--success:#16a34a;--warning:#d97706;--info:#0891b2;--radius:12px;--shadow:0 4px 18px rgba(15,23,42,.08)}
+body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.55;min-height:100vh}
+nav{background:#fff;border-bottom:1px solid var(--border);height:60px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 1px 5px #0000000a}
+.nav-brand{font-size:21px;font-weight:800;color:var(--accent);cursor:pointer}
+.nav-links{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.nav-links button{background:none;border:0;cursor:pointer;font:inherit;font-size:13px;color:var(--muted);padding:7px 10px;border-radius:7px;transition:background .15s}
+.nav-links button:hover{background:#eff6ff;color:var(--accent)}
+.nav-links button.active{background:#eff6ff;color:var(--accent);font-weight:700}
+.btn-logout{color:var(--danger)!important}
+.page{display:none;max-width:1100px;margin:auto;padding:30px 20px}
+.page.active{display:block}
+.auth-wrap{max-width:480px;margin:45px auto;background:#fff;border:1px solid var(--border);border-radius:15px;padding:34px;box-shadow:var(--shadow)}
+.auth-tabs{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:20px 0}
+.auth-tab{flex:1;padding:10px;border:0;background:var(--bg);font-weight:700;color:var(--muted);cursor:pointer}
+.auth-tab.active{background:var(--accent);color:#fff}
+.form-group{margin-bottom:15px}
+label{display:block;font-size:11px;font-weight:800;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:14px;outline:none;background:#fff}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px #2563eb1c}
+textarea{min-height:85px;resize:vertical}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+@media(max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}.nav-links button{padding:6px}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 17px;border:0;border-radius:8px;font-weight:700;cursor:pointer;font:inherit;font-size:13px;transition:opacity .15s}
+.btn:hover{opacity:.92}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-success{background:var(--success);color:#fff}
+.btn-warning{background:var(--warning);color:#fff}
+.btn-outline{background:#fff;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{background:#f8fafc}
+.btn-full{width:100%}
+.btn-sm{padding:6px 12px;font-size:12px}
+.card-box,.stat{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:21px;box-shadow:var(--shadow)}
+.section-header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:20px}
+.section-header h2{font-size:21px;font-weight:800}
+.section-header p{font-size:13px;color:var(--muted)}
+.alert{padding:12px 14px;border-radius:8px;margin-bottom:15px;font-size:13px}
+.alert-info{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.alert-warning{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+.alert-success{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.alert-danger{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.stat-label{font-size:11px;text-transform:uppercase;font-weight:800;color:var(--muted);letter-spacing:.06em}
+.stat-value{font-size:28px;font-weight:800;margin-top:2px}
+.stat-sub{font-size:12px;color:var(--muted)}
+.badge{display:inline-flex;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800}
+.badge-blue{background:#dbeafe;color:#1d4ed8}
+.badge-green{background:#dcfce7;color:#15803d}
+.badge-orange{background:#fef3c7;color:#92400e}
+.badge-red{background:#fee2e2;color:#b91c1c}
+.badge-gray{background:#f1f5f9;color:#64748b}
+.security{background:linear-gradient(90deg,#172554,#2563eb);color:#fff;border-radius:11px;padding:18px 20px;margin-bottom:20px}
+.security h4{font-size:15px}
+.security p{font-size:12px;opacity:.88}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--muted);font-size:10px;text-transform:uppercase;padding:10px;border-bottom:1px solid var(--border)}
+td{padding:10px;border-bottom:1px solid var(--border)}
+.notif{display:flex;gap:11px;padding:13px 0;border-bottom:1px solid var(--border)}
+.dot{width:9px;height:9px;border-radius:50%;margin-top:7px;flex:none}
+.dot-blue{background:var(--accent)}
+.dot-green{background:var(--success)}
+.dot-orange{background:var(--warning)}
+.dot-red{background:var(--danger)}
+.chat{height:460px;display:flex;flex-direction:column}
+.chat-body{flex:1;overflow:auto;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:15px}
+.bubble{max-width:72%;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px}
+.mine{margin-left:auto;background:#dbeafe;color:#1e3a8a}
+.theirs{background:#fff;border:1px solid var(--border);color:var(--text)}
+.chat-input{display:flex;gap:8px;margin-top:9px}
+.hidden{display:none!important}
+.divider{height:1px;background:var(--border);margin:18px 0}
+.empty{text-align:center;color:var(--muted);padding:35px}
+.match-card{border:1px solid #bfdbfe;background:#f8fbff;border-radius:11px;padding:17px;margin-bottom:14px;box-shadow:0 2px 8px #00000008}
+.score{font-size:22px;font-weight:800;color:var(--accent)}
+.verify-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-top:12px}
+.steps{display:flex;margin-bottom:25px}
+.step{flex:1;text-align:center;font-size:11px;color:var(--muted);position:relative}
+.step:after{content:"";height:2px;background:var(--border);position:absolute;top:14px;left:50%;width:100%;z-index:0}
+.step:last-child:after{display:none}
+.circle{width:28px;height:28px;border-radius:50%;background:var(--border);display:inline-flex;align-items:center;justify-content:center;position:relative;z-index:1;font-weight:800}
+.step.active .circle{background:var(--accent);color:#fff}
+.step.done .circle{background:var(--success);color:#fff}
+footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);font-size:12px;text-align:center}
+#server-status{font-size:11px;padding:4px 8px;border-radius:6px;margin-left:8px}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand" onclick="showPage('dashboard')">🔒 CardSafe <span id="server-status" class="badge badge-green">Online</span></div>
+  <div class="nav-links">
+    <div id="nav-public"><button onclick="showPage('auth')">Login / Register</button></div>
+    <div id="nav-private" class="hidden">
+      <button onclick="showPage('dashboard')" id="navbtn-dashboard">Dashboard</button>
+      <button onclick="showPage('lost')" id="navbtn-lost">Lost Card</button>
+      <button onclick="showPage('found')" id="navbtn-found">Found Card</button>
+      <button onclick="showPage('matches')" id="navbtn-matches">Matches (<span id="nav-matches-count">0</span>)</button>
+      <button onclick="showPage('chat')" id="navbtn-chat">Chat</button>
+      <button onclick="showPage('transactions')" id="navbtn-transactions">Transactions</button>
+      <button onclick="showPage('notifications')" id="navbtn-notifications">🔔 <span id="nav-count">0</span></button>
+      <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<!-- AUTH -->
+<div id="page-auth" class="page active">
+<div class="auth-wrap">
+  <div style="font-size:38px">🛡️</div>
+  <h2>CardSafe</h2>
+  <p style="color:var(--muted);font-size:13px">Two-way lost & found debit card security platform.</p>
+  <div class="auth-tabs">
+    <button class="auth-tab active" onclick="authTab('login',this)">Login</button>
+    <button class="auth-tab" onclick="authTab('register',this)">Register</button>
+  </div>
+  <div id="login-form">
+    <div id="login-error" class="alert alert-danger hidden"></div>
+    <div class="form-group"><label>Email</label><input id="login-email" type="email" placeholder="user@demo.com"></div>
+    <div class="form-group"><label>Password</label><input id="login-password" type="password" placeholder="demo1234"></div>
+    <button class="btn btn-primary btn-full" onclick="login()">Login Securely</button>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-outline btn-full btn-sm" onclick="fillDemo('user')">👤 Autofill Demo Owner</button>
+      <button class="btn btn-outline btn-full btn-sm" onclick="fillDemo('finder')">🔎 Autofill Demo Finder</button>
+    </div>
+  </div>
+  <div id="register-form" class="hidden">
+    <div id="register-error" class="alert alert-danger hidden"></div>
+    <div class="grid-2">
+      <div class="form-group"><label>First Name</label><input id="reg-fname" placeholder="Rahul"></div>
+      <div class="form-group"><label>Last Name</label><input id="reg-lname" placeholder="Verma"></div>
+    </div>
+    <div class="form-group"><label>Email</label><input id="reg-email" type="email" placeholder="rahul@example.com"></div>
+    <div class="form-group"><label>Password</label><input id="reg-password" type="password" placeholder="Minimum 8 characters"></div>
+    <button class="btn btn-primary btn-full" onclick="register()">Create Account</button>
+  </div>
+  <div class="divider"></div>
+  <div class="alert alert-info">🔐 Privacy Guard: Never enter CVV, PIN, OTP, banking password, or complete card number in CardSafe.</div>
+</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page">
+<div class="section-header"><div><h2 id="welcome">Welcome 👋</h2><p>Securely connect lost cards with people who find them.</p></div><button class="btn btn-primary" onclick="showPage('lost')">+ Report Lost Card</button></div>
+<div class="security"><h4>🛡️ Privacy-first matching is active</h4><p>CardSafe uses safe identifiers such as bank, card type, and last 4 digits. Sensitive banking credentials are never requested or stored.</p></div>
+<div class="grid-3" style="margin-bottom:18px">
+ <div class="stat"><div class="stat-label">My Lost Reports</div><div class="stat-value" id="stat-lost">0</div><div class="stat-sub">Cards reported lost</div></div>
+ <div class="stat"><div class="stat-label">Found Reports</div><div class="stat-value" id="stat-found">0</div><div class="stat-sub">Cards I reported found</div></div>
+ <div class="stat"><div class="stat-label">Potential Matches</div><div class="stat-value" id="stat-matches">0</div><div class="stat-sub">Awaiting verification</div></div>
+</div>
+<div class="grid-2">
+ <div class="card-box">
+   <h3 style="margin-bottom:8px">👤 As a Card Owner</h3>
+   <p style="color:var(--muted);font-size:13px;margin-bottom:14px">Report your lost card with safe identifiers. If someone finds a matching card, you receive an instant notification and can verify ownership privately.</p>
+   <button class="btn btn-primary" onclick="showPage('lost')">Report My Lost Card</button>
+ </div>
+ <div class="card-box">
+   <h3 style="margin-bottom:8px">🔎 As a Card Finder</h3>
+   <p style="color:var(--muted);font-size:13px;margin-bottom:14px">Found a debit or credit card? Submit safe identifiers (bank, type, last 4) so CardSafe can search for its owner without exposing private data.</p>
+   <button class="btn btn-success" onclick="showPage('found')">I Found a Card</button>
+ </div>
+</div>
+</div>
+
+<!-- LOST CARD -->
+<div id="page-lost" class="page">
+<div class="section-header"><div><h2>Report Lost Card</h2><p>Submit only safe identification details for automated matching.</p></div></div>
+<div class="steps"><div class="step active"><span class="circle">1</span><br>Card Details</div><div class="step active"><span class="circle">2</span><br>Last Known Use</div><div class="step"><span class="circle">3</span><br>Submit</div></div>
+<div class="card-box">
+<div class="alert alert-warning">⚠️ Do not enter CVV, PIN, OTP, full 16-digit card number or online-banking password.</div>
+<div class="grid-2">
+ <div class="form-group"><label>Bank Name</label><input id="lost-bank" placeholder="State Bank of India"></div>
+ <div class="form-group"><label>Card Type</label><select id="lost-type"><option value="DEBIT">Visa / Mastercard / RuPay Debit</option><option value="CREDIT">Credit Card</option></select></div>
+ <div class="form-group"><label>Last 4 Digits</label><input id="lost-last4" maxlength="4" inputmode="numeric" placeholder="4821"></div>
+ <div class="form-group"><label>Date Lost</label><input id="lost-date" type="date"></div>
+ <div class="form-group"><label>Last Known Location</label><input id="lost-location" placeholder="College gate / market / ATM"></div>
+ <div class="form-group"><label>Last Transaction Merchant (for ownership verification)</label><input id="lost-merchant" placeholder="e.g. Grocery Store"></div>
+ <div class="form-group"><label>Last Transaction Amount (optional)</label><input id="lost-amount" placeholder="e.g. 450"></div>
+ <div class="form-group"><label>Last Transaction Date (optional)</label><input id="lost-txn-date" type="date"></div>
+</div>
+<div class="form-group"><label>Additional Description</label><textarea id="lost-description" placeholder="Any safe notes, e.g. blue card holder, stickers, or approximate time."></textarea></div>
+<button class="btn btn-danger" onclick="submitLost()">🔒 Submit Lost Card Report</button>
+</div>
+</div>
+
+<!-- FOUND CARD -->
+<div id="page-found" class="page">
+<div class="section-header">
+<div>
+<h2>🔎 I Found a Card</h2>
+<p>Help return the card safely without exposing the owner's private credentials.</p>
+</div>
+</div>
+
+<div class="card-box">
+<div class="alert alert-info">For your safety and privacy, do not enter full card numbers, CVV, PIN, OTP or account passwords.</div>
+<div class="grid-2">
+ <div class="form-group">
+  <label>Bank Name</label>
+  <input id="found-bank" placeholder="State Bank of India">
+ </div>
+ <div class="form-group">
+  <label>Card Type</label>
+  <select id="found-type">
+   <option value="DEBIT">Debit Card (Visa / Mastercard / RuPay)</option>
+   <option value="CREDIT">Credit Card</option>
+  </select>
+ </div>
+ <div class="form-group">
+  <label>Last 4 Digits</label>
+  <input id="found-last4" maxlength="4" minlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="4821">
+ </div>
+ <div class="form-group">
+  <label>Date Found</label>
+  <input id="found-date" type="date">
+ </div>
+ <div class="form-group" style="grid-column:span 2">
+  <label>Found Location</label>
+  <input id="found-location" placeholder="Example: College Gate / Market / ATM Counter">
+ </div>
+</div>
+<div class="form-group">
+ <label>Description (Optional)</label>
+ <textarea id="found-description" placeholder="Add any safe details about where or how you found the card (e.g. dropped on counter, handed to security desk)."></textarea>
+</div>
+<button class="btn btn-success" onclick="submitFound()">🔎 Search for Potential Owner</button>
+</div>
+</div>
+
+<!-- MATCHES -->
+<div id="page-matches" class="page">
+<div class="section-header"><div><h2>Potential Matches</h2><p>Matches are potential until ownership verification is completed.</p></div><button class="btn btn-outline btn-sm" onclick="loadAll()">🔄 Refresh</button></div>
+<div id="matches-list"></div>
+</div>
+
+<!-- CHAT -->
+<div id="page-chat" class="page">
+<div class="section-header">
+  <div>
+    <h2>💬 Secure Conversation</h2>
+    <p id="chat-header-sub">Communicate safely through CardSafe without exposing private contact info.</p>
+  </div>
+  <button class="btn btn-outline btn-sm" onclick="showPage('matches')">Back to Matches</button>
+</div>
+<div class="card-box chat">
+ <div id="chat-body" class="chat-body"></div>
+ <div class="chat-input"><input id="chat-message" placeholder="Type a safe message (e.g. where can we safely meet)..." onkeydown="if(event.key==='Enter')sendMessage()"><button class="btn btn-primary" onclick="sendMessage()">Send</button></div>
+</div>
+</div>
+
+<!-- TRANSACTIONS -->
+<div id="page-transactions" class="page">
+<div class="section-header"><div><h2>Private Transaction Verification</h2><p>Transaction records are used exclusively to verify rightful card ownership.</p></div></div>
+<div class="alert alert-warning">🔐 Previous transactions are an ownership-verification factor stored privately, never shown to card finders.</div>
+<div class="card-box">
+<table><thead><tr><th>Date</th><th>Card</th><th>Merchant</th><th>Amount</th><th>Status</th></tr></thead><tbody id="txn-body"></tbody></table>
+</div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div id="page-notifications" class="page">
+<div class="section-header"><div><h2>🔔 Notifications</h2><p>Potential matches, verification requests, and recovery updates.</p></div><button class="btn btn-outline btn-sm" onclick="markRead()">Mark all read</button></div>
+<div class="card-box" id="notifications-list"></div>
+</div>
+
+<footer>CardSafe Prototype • Two-Way Lost & Found Security • Privacy-First Architecture</footer>
+
+<script>
+// Auto-detect API location (works whether served directly or via file:/// or other port)
+const API = window.location.protocol.startsWith('http')
+  ? (window.location.port === '5000' ? '/api' : 'http://localhost:5000/api')
+  : 'http://localhost:5000/api';
+
+let state = {
+  logged: false,
+  user: null,
+  token: localStorage.getItem("cardsafe_token"),
+  matches: [],
+  notifications: [],
+  messages: [],
+  activeMatch: null
+};
+
+// Check backend health on start
+async function checkBackend() {
+  try {
+    const res = await fetch(API + '/health');
+    const data = await res.json();
+    const statusBadge = document.getElementById('server-status');
+    if (data.ok && data.database === 'connected') {
+      statusBadge.textContent = 'DB Connected';
+      statusBadge.className = 'badge badge-green';
+    } else {
+      statusBadge.textContent = 'DB Unavailable';
+      statusBadge.className = 'badge badge-red';
+    }
+  } catch (e) {
+    const statusBadge = document.getElementById('server-status');
+    if (statusBadge) {
+      statusBadge.textContent = 'Backend Offline';
+      statusBadge.className = 'badge badge-red';
+    }
+  }
+}
+
+/* ---------- API HELPER ---------- */
+
+function getHeaders() {
+  const headers = { "Content-Type": "application/json" };
+  if (state.token) {
+    headers.Authorization = `Bearer ${state.token}`;
+  }
+  return headers;
+}
+
+async function api(path, options = {}) {
+  try {
+    const response = await fetch(API + path, {
+      ...options,
+      headers: {
+        ...getHeaders(),
+        ...(options.headers || {})
+      }
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      if (response.status === 401 && state.logged) {
+        logout();
+        throw new Error("Session expired. Please log in again.");
+      }
+      throw new Error(data.message || `Request failed with status ${response.status}`);
+    }
+
+    return data;
+  } catch (err) {
+    if (err.message.includes('Failed to fetch')) {
+      throw new Error('Could not connect to backend server at ' + API + '. Make sure the backend server is running.');
+    }
+    throw err;
+  }
+}
+
+/* ---------- AUTH TABS & DEMO AUTOFILL ---------- */
+
+function authTab(tab, el) {
+  document.querySelectorAll(".auth-tab").forEach(button => button.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("login-form").classList.toggle("hidden", tab !== "login");
+  document.getElementById("register-form").classList.toggle("hidden", tab !== "register");
+}
+
+function fillDemo(type) {
+  if (type === 'user') {
+    document.getElementById("login-email").value = "user@demo.com";
+    document.getElementById("login-password").value = "demo1234";
+  } else {
+    document.getElementById("login-email").value = "finder@demo.com";
+    document.getElementById("login-password").value = "demo1234";
+  }
+}
+
+/* ---------- LOGIN ---------- */
+
+async function login() {
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+
+  if (!email || !password) {
+    showError("login-error", "Enter your email and password.");
+    return;
+  }
+
+  try {
+    const data = await api("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password })
+    });
+
+    state.token = data.token;
+    state.user = data.user;
+    state.logged = true;
+
+    localStorage.setItem("cardsafe_token", data.token);
+    localStorage.setItem("cardsafe_user", JSON.stringify(data.user));
+
+    onLogin();
+  } catch (error) {
+    showError("login-error", error.message);
+  }
+}
+
+/* ---------- REGISTER ---------- */
+
+async function register() {
+  const firstName = document.getElementById("reg-fname").value.trim();
+  const lastName = document.getElementById("reg-lname").value.trim();
+  const email = document.getElementById("reg-email").value.trim();
+  const password = document.getElementById("reg-password").value;
+
+  if (!firstName || !lastName || !email || password.length < 8) {
+    showError("register-error", "Please provide first name, last name, valid email, and a password of at least 8 characters.");
+    return;
+  }
+
+  try {
+    const data = await api("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        name: `${firstName} ${lastName}`,
+        email,
+        password
+      })
+    });
+
+    state.token = data.token;
+    state.user = data.user;
+    state.logged = true;
+
+    localStorage.setItem("cardsafe_token", data.token);
+    localStorage.setItem("cardsafe_user", JSON.stringify(data.user));
+
+    onLogin();
+  } catch (error) {
+    showError("register-error", error.message);
+  }
+}
+
+function showError(id, message) {
+  const element = document.getElementById(id);
+  if (!element) {
+    alert(message);
+    return;
+  }
+  element.textContent = message;
+  element.classList.remove("hidden");
+}
+
+/* ---------- AFTER LOGIN / LOGOUT ---------- */
+
+function onLogin() {
+  document.getElementById("nav-public").classList.add("hidden");
+  document.getElementById("nav-private").classList.remove("hidden");
+
+  const welcome = document.getElementById("welcome");
+  if (welcome) {
+    welcome.textContent = `Welcome, ${state.user.name || "User"} 👋`;
+  }
+
+  showPage("dashboard");
+  loadAll();
+}
+
+function logout() {
+  localStorage.removeItem("cardsafe_token");
+  localStorage.removeItem("cardsafe_user");
+
+  state = {
+    logged: false,
+    user: null,
+    token: null,
+    matches: [],
+    notifications: [],
+    messages: [],
+    activeMatch: null
+  };
+
+  document.getElementById("nav-public").classList.remove("hidden");
+  document.getElementById("nav-private").classList.add("hidden");
+
+  showPage("auth");
+}
+
+/* ---------- PAGE NAVIGATION ---------- */
+
+function showPage(id) {
+  if (!state.logged && id !== "auth") {
+    id = "auth";
+  }
+
+  document.querySelectorAll(".page").forEach(page => page.classList.remove("active"));
+  document.querySelectorAll(".nav-links button").forEach(btn => btn.classList.remove("active"));
+
+  const targetPage = document.getElementById("page-" + id);
+  if (targetPage) targetPage.classList.add("active");
+
+  const navBtn = document.getElementById("navbtn-" + id);
+  if (navBtn) navBtn.classList.add("active");
+
+  if (state.logged) {
+    if (id === 'transactions') loadTransactions();
+    if (id === 'matches') loadMatches();
+    if (id === 'notifications') loadNotifications();
+  }
+}
+
+/* ---------- SUBMIT LOST CARD ---------- */
+
+async function submitLost() {
+  const bank = document.getElementById("lost-bank").value.trim();
+  const typeValue = document.getElementById("lost-type").value;
+  const last4 = document.getElementById("lost-last4").value.trim();
+  const date = document.getElementById("lost-date").value;
+  const location = document.getElementById("lost-location").value.trim();
+  const description = document.getElementById("lost-description").value.trim();
+  const merchant = document.getElementById("lost-merchant").value.trim();
+  const amount = document.getElementById("lost-amount").value.trim();
+  const txnDate = document.getElementById("lost-txn-date").value;
+
+  if (!bank || !/^\d{4}$/.test(last4) || !date || !location) {
+    alert("Please enter bank name, valid 4-digit last4, date lost, and location.");
+    return;
+  }
+
+  try {
+    const cardType = typeValue.toLowerCase().includes("credit") ? "CREDIT" : "DEBIT";
+
+    // 1. Create or register the card entry
+    const card = await api("/cards", {
+      method: "POST",
+      body: JSON.stringify({ bankName: bank, cardType, last4 })
+    });
+
+    // 2. Report the card as lost with optional verification transaction
+    const lostRes = await api(`/cards/${card.id}/lost`, {
+      method: "POST",
+      body: JSON.stringify({
+        lostLocation: location,
+        lostAt: new Date(date + "T12:00:00").toISOString(),
+        description: description,
+        merchantName: merchant,
+        amount: amount,
+        transactionDate: txnDate
+      })
+    });
+
+    if (lostRes.matches && lostRes.matches.length > 0) {
+      alert("✅ Lost card reported! A potential match was found with an already reported card!");
+    } else {
+      alert("✅ Lost card report submitted successfully.");
+    }
+
+    clearInputs([
+      "lost-bank", "lost-last4", "lost-date", "lost-location",
+      "lost-merchant", "lost-amount", "lost-txn-date", "lost-description"
+    ]);
+
+    await loadAll();
+    showPage("matches");
+  } catch (error) {
+    alert("Could not submit lost card: " + error.message);
+  }
+}
+
+/* ---------- SUBMIT FOUND CARD ---------- */
+
+async function submitFound() {
+  const bank = document.getElementById("found-bank").value.trim();
+  const typeValue = document.getElementById("found-type").value;
+  const last4 = document.getElementById("found-last4").value.trim();
+  const date = document.getElementById("found-date").value;
+  const location = document.getElementById("found-location").value.trim();
+  const description = document.getElementById("found-description").value.trim();
+
+  if (!bank || !/^\d{4}$/.test(last4) || !location) {
+    alert("Please enter bank name, valid 4-digit last4, and found location.");
+    return;
+  }
+
+  try {
+    const cardType = typeValue.toLowerCase().includes("credit") ? "CREDIT" : "DEBIT";
+    const foundDate = date || new Date().toISOString().slice(0, 10);
+
+    const result = await api("/reports/found", {
+      method: "POST",
+      body: JSON.stringify({
+        bankName: bank,
+        cardType,
+        last4,
+        foundLocation: location,
+        foundAt: new Date(foundDate + "T12:00:00").toISOString(),
+        description: description
+      })
+    });
+
+    if (result.matchCreated || (result.matches && result.matches.length > 0)) {
+      alert("🎉 Potential Match Found! The card owner has been notified.");
+    } else {
+      alert("✅ Found-card report recorded. We will alert you when the owner reports it.");
+    }
+
+    clearInputs(["found-bank", "found-last4", "found-date", "found-location", "found-description"]);
+
+    await loadAll();
+    showPage("matches");
+  } catch (error) {
+    alert("Could not submit found card: " + error.message);
+  }
+}
+
+/* ---------- MATCHES ---------- */
+
+async function loadMatches() {
+  try {
+    state.matches = await api("/reports/matches");
+    renderMatches();
+    const countEl = document.getElementById("nav-matches-count");
+    if (countEl) countEl.textContent = state.matches.length;
+  } catch (error) {
+    console.log("Matches error:", error.message);
+  }
+}
+
+function renderMatches() {
+  const box = document.getElementById("matches-list");
+  if (!box) return;
+
+  if (!state.matches.length) {
+    box.innerHTML = `
+      <div class="card-box empty">
+        No potential matches yet.<br>
+        When a found-card report matches a lost-card report, it will appear here automatically.
+      </div>
+    `;
+    return;
+  }
+
+  box.innerHTML = state.matches.map(match => {
+    const isOwner = state.user && (String(match.owner_id) === String(state.user.id));
+    const isFinder = state.user && (String(match.finder_id) === String(state.user.id));
+    const userRoleBadge = isOwner ? '<span class="badge badge-blue">You are the Owner</span>' : (isFinder ? '<span class="badge badge-green">You are the Finder</span>' : '');
+
+    let statusBadgeClass = 'badge-orange';
+    if (match.status === 'OWNER_VERIFIED') statusBadgeClass = 'badge-green';
+    if (match.status === 'RECOVERY_IN_PROGRESS') statusBadgeClass = 'badge-blue';
+
+    return `
+      <div class="match-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div>
+            <b>💳 ${escapeHTML(match.bank_name || 'Card')} (•••• ${escapeHTML(match.last4 || '****')})</b>
+            ${userRoleBadge}
+            <br>
+            <span style="color:var(--muted);font-size:12px">Match ID: ${escapeHTML(match.id)}</span>
+          </div>
+          <div class="score">${match.score}% Match</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="grid-2" style="font-size:13px">
+          <div><b>Lost Location:</b> ${escapeHTML(match.lost_location || 'N/A')}</div>
+          <div><b>Found Location:</b> ${escapeHTML(match.found_location || 'N/A')}</div>
+          <div><b>Status:</b> <span class="badge ${statusBadgeClass}">${escapeHTML(String(match.status).replaceAll("_", " "))}</span></div>
+          <div><b>Card Type:</b> ${escapeHTML(match.card_type || 'DEBIT')}</div>
+        </div>
+
+        ${isOwner && match.status === 'VERIFICATION_PENDING' ? `
+          <div class="verify-box">
+            <b>🛡️ Two-Way Ownership Verification:</b>
+            <p style="font-size:12px;color:var(--muted);margin:4px 0 8px">To verify you own this card, enter the merchant name of a recent transaction (e.g. Grocery Store, College Canteen):</p>
+            <div style="display:flex;gap:8px">
+              <input id="verify-merchant-${match.id}" placeholder="Enter recent merchant name..." style="max-width:320px;padding:6px 10px;font-size:13px">
+              <button class="btn btn-primary btn-sm" onclick="verifyOwnership('${match.id}')">Verify Ownership</button>
+            </div>
+          </div>
+        ` : ''}
+
+        <div style="display:flex;gap:8px;margin-top:14px;align-items:center">
+          <button class="btn btn-primary btn-sm" onclick="openMatchChat('${match.id}', '${escapeHTML(match.bank_name || 'Card')} •••• ${escapeHTML(match.last4 || '')}')">
+            💬 Open Secure Conversation
+          </button>
+          ${match.status === 'OWNER_VERIFIED' ? '<span class="badge badge-green">✓ Ownership Confirmed</span>' : ''}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+/* ---------- VERIFY OWNERSHIP ---------- */
+
+async function verifyOwnership(matchId) {
+  const input = document.getElementById(`verify-merchant-${matchId}`);
+  const merchantName = input ? input.value.trim() : '';
+
+  if (!merchantName) {
+    alert("Please enter a merchant name from a recent transaction to verify.");
+    return;
+  }
+
+  try {
+    const res = await api(`/reports/matches/${matchId}/verify-transaction`, {
+      method: "POST",
+      body: JSON.stringify({ merchantName })
+    });
+
+    if (res.verified) {
+      alert("🎉 " + res.message);
+    } else {
+      alert("❌ " + res.message);
+    }
+
+    await loadAll();
+  } catch (err) {
+    alert("Verification failed: " + err.message);
+  }
+}
+
+/* ---------- CHAT ---------- */
+
+let chatRefreshTimer = null;
+
+async function openMatchChat(matchId, cardLabel) {
+  state.activeMatch = matchId;
+  const headerSub = document.getElementById("chat-header-sub");
+  if (headerSub) {
+    headerSub.textContent = `Talking about: ${cardLabel || 'Potential Card Match'} (ID: ${matchId.slice(0, 8)}...)`;
+  }
+
+  showPage("chat");
+  await loadMessages();
+
+  if (chatRefreshTimer) clearInterval(chatRefreshTimer);
+  chatRefreshTimer = setInterval(async () => {
+    if (state.activeMatch && document.getElementById("page-chat").classList.contains("active")) {
+      await loadMessages();
+    }
+  }, 3000);
+}
+
+async function loadMessages() {
+  if (!state.activeMatch) return;
+  try {
+    state.messages = await api(`/reports/matches/${state.activeMatch}/messages`);
+    renderChat();
+  } catch (error) {
+    console.log("Messages error:", error.message);
+  }
+}
+
+async function sendMessage() {
+  const input = document.getElementById("chat-message");
+  if (!input) return;
+  const body = input.value.trim();
+  if (!body) return;
+
+  if (!state.activeMatch) {
+    alert("Please open a potential match first.");
+    return;
+  }
+
+  try {
+    await api(`/reports/matches/${state.activeMatch}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ body })
+    });
+
+    input.value = "";
+    await loadMessages();
+  } catch (error) {
+    alert("Message could not be sent: " + error.message);
+  }
+}
+
+function renderChat() {
+  const box = document.getElementById("chat-body");
+  if (!box) return;
+
+  if (!state.messages.length) {
+    box.innerHTML = `
+      <div class="empty">
+        No messages yet.<br>
+        Send a secure message to coordinate safe recovery of the card.
+      </div>
+    `;
+    return;
+  }
+
+  box.innerHTML = state.messages.map(message => {
+    const isMine = String(message.sender_id) === String(state.user.id);
+    return `
+      <div class="bubble ${isMine ? "mine" : "theirs"}">
+        <b>${isMine ? "You" : escapeHTML(message.sender_name || "Other Participant")}</b>
+        <span style="font-size:11px;opacity:0.75;margin-left:6px">${new Date(message.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+        <br>
+        ${escapeHTML(message.body)}
+      </div>
+    `;
+  }).join("");
+
+  box.scrollTop = box.scrollHeight;
+}
+
+/* ---------- TRANSACTIONS ---------- */
+
+async function loadTransactions() {
+  try {
+    const list = await api("/cards/mine/transactions");
+    renderTransactions(list);
+  } catch (e) {
+    // Fallback sample data if no cards registered yet
+    renderTransactions([]);
+  }
+}
+
+function renderTransactions(list) {
+  const body = document.getElementById("txn-body");
+  if (!body) return;
+
+  if (!list || list.length === 0) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align:center;color:var(--muted);padding:20px">
+          No transactions found for your cards yet. They are recorded when you submit a lost card with verification details.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  body.innerHTML = list.map(tx => `
+    <tr>
+      <td>${escapeHTML(new Date(tx.transaction_date).toISOString().slice(0, 10))}</td>
+      <td><b>${escapeHTML(tx.bank_name || 'Card')} (•••• ${escapeHTML(tx.last4 || '')})</b></td>
+      <td><b>${escapeHTML(tx.merchant_name)}</b></td>
+      <td><b>₹${escapeHTML(Number(tx.amount).toFixed(2))}</b></td>
+      <td><span class="badge badge-green">Verified on File</span></td>
+    </tr>
+  `).join("");
+}
+
+/* ---------- NOTIFICATIONS ---------- */
+
+async function loadNotifications() {
+  try {
+    state.notifications = await api("/notifications");
+    renderNotifications();
+  } catch (error) {
+    console.log("Notifications error:", error.message);
+  }
+}
+
+function renderNotifications() {
+  const box = document.getElementById("notifications-list");
+  if (!box) return;
+
+  const count = document.getElementById("nav-count");
+  const unreadCount = state.notifications.filter(n => !n.read_at).length;
+  if (count) count.textContent = unreadCount;
+
+  if (!state.notifications.length) {
+    box.innerHTML = `<div class="empty">No notifications yet.</div>`;
+    return;
+  }
+
+  box.innerHTML = state.notifications.map(notification => `
+    <div class="notif">
+      <span class="dot ${notification.read_at ? 'dot-blue' : 'dot-orange'}"></span>
+      <div>
+        <b>${escapeHTML(notification.title)}</b>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${escapeHTML(notification.message)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${new Date(notification.created_at).toLocaleString()}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function markRead() {
+  for (const n of state.notifications) {
+    if (!n.read_at) {
+      await api(`/notifications/${n.id}/read`, { method: "PATCH" }).catch(() => {});
+    }
+  }
+  await loadNotifications();
+}
+
+/* ---------- DASHBOARD STATS & LOAD ALL ---------- */
+
+async function loadDashboardStats() {
+  try {
+    const stats = await api("/reports/stats");
+    const lostEl = document.getElementById("stat-lost");
+    const foundEl = document.getElementById("stat-found");
+    const matchesEl = document.getElementById("stat-matches");
+    if (lostEl) lostEl.textContent = stats.lostCount;
+    if (foundEl) foundEl.textContent = stats.foundCount;
+    if (matchesEl) matchesEl.textContent = stats.matchesCount;
+  } catch (e) {
+    console.log("Dashboard stats error:", e.message);
+  }
+}
+
+async function loadAll() {
+  if (!state.logged) return;
+  await Promise.allSettled([
+    loadDashboardStats(),
+    loadMatches(),
+    loadNotifications()
+  ]);
+}
+
+/* ---------- UTILITIES ---------- */
+
+function clearInputs(ids) {
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  })[c]);
+}
+
+/* ---------- SESSION RESTORATION ---------- */
+
+function restoreSession() {
+  const savedUser = localStorage.getItem("cardsafe_user");
+  if (state.token && savedUser) {
+    try {
+      state.user = JSON.parse(savedUser);
+      state.logged = true;
+      document.getElementById("nav-public").classList.add("hidden");
+      document.getElementById("nav-private").classList.remove("hidden");
+      document.getElementById("welcome").textContent = `Welcome, ${state.user.name || "User"} 👋`;
+      showPage("dashboard");
+      loadAll();
+    } catch (e) {
+      logout();
+    }
+  }
+}
+
+// Set default dates to today
+const todayStr = new Date().toISOString().slice(0, 10);
+const lostDateEl = document.getElementById("lost-date");
+const foundDateEl = document.getElementById("found-date");
+if (lostDateEl) lostDateEl.value = todayStr;
+if (foundDateEl) foundDateEl.value = todayStr;
+
+checkBackend();
+restoreSession();
+</script>
+</body>
+</html>
