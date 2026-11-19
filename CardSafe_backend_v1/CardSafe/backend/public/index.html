@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>CardSafe — Two-Way Lost & Found Debit Card Security</title>
+<!-- QR Code Generation & Scanning Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#f0f4f8;--surface:#fff;--border:#dde3ea;--text:#172033;--muted:#607086;--accent:#2563eb;--accent2:#1d4ed8;--danger:#dc2626;--success:#16a34a;--warning:#d97706;--info:#0891b2;--radius:12px;--shadow:0 4px 18px rgba(15,23,42,.08)}
@@ -81,7 +84,6 @@ td{padding:10px;border-bottom:1px solid var(--border)}
 .empty{text-align:center;color:var(--muted);padding:35px}
 .match-card{border:1px solid #bfdbfe;background:#f8fbff;border-radius:11px;padding:17px;margin-bottom:14px;box-shadow:0 2px 8px #00000008}
 .score{font-size:22px;font-weight:800;color:var(--accent)}
-.verify-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-top:12px}
 .steps{display:flex;margin-bottom:25px}
 .step{flex:1;text-align:center;font-size:11px;color:var(--muted);position:relative}
 .step:after{content:"";height:2px;background:var(--border);position:absolute;top:14px;left:50%;width:100%;z-index:0}
@@ -90,13 +92,22 @@ td{padding:10px;border-bottom:1px solid var(--border)}
 .step.active .circle{background:var(--accent);color:#fff}
 .step.done .circle{background:var(--success);color:#fff}
 footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);font-size:12px;text-align:center}
-#server-status{font-size:11px;padding:4px 8px;border-radius:6px;margin-left:8px}
+
+/* MODAL STYLES FOR QR VERIFICATION */
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.modal.hidden{display:none!important}
+.modal-box{background:#fff;border-radius:16px;max-width:440px;width:100%;padding:26px;box-shadow:0 15px 45px rgba(0,0,0,0.22);text-align:center;position:relative;animation:popIn .2s ease-out}
+@keyframes popIn{from{transform:scale(0.92);opacity:0}to{transform:scale(1);opacity:1}}
+.qr-frame{display:inline-flex;justify-content:center;align-items:center;margin:14px auto;padding:12px;background:#fff;border:2px dashed #bfdbfe;border-radius:12px;min-width:180px;min-height:180px}
+.token-code{font-family:monospace;font-size:26px;font-weight:900;letter-spacing:3px;color:var(--accent);background:#eff6ff;padding:8px 18px;border-radius:8px;display:inline-block;margin:10px 0;border:1px solid #bfdbfe}
+.timer-badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--warning);background:#fffbeb;padding:4px 12px;border-radius:20px;margin-bottom:12px;border:1px solid #fde68a}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:0;font-size:22px;color:var(--muted);cursor:pointer}
 </style>
 </head>
 <body>
 
 <nav>
-  <div class="nav-brand" onclick="showPage('dashboard')">🔒 CardSafe <span id="server-status" class="badge badge-green">Online</span></div>
+  <div class="nav-brand" onclick="showPage('dashboard')">🔒 CardSafe</div>
   <div class="nav-links">
     <div id="nav-public"><button onclick="showPage('auth')">Login / Register</button></div>
     <div id="nav-private" class="hidden">
@@ -105,7 +116,6 @@ footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);fo
       <button onclick="showPage('found')" id="navbtn-found">Found Card</button>
       <button onclick="showPage('matches')" id="navbtn-matches">Matches (<span id="nav-matches-count">0</span>)</button>
       <button onclick="showPage('chat')" id="navbtn-chat">Chat</button>
-      <button onclick="showPage('transactions')" id="navbtn-transactions">Transactions</button>
       <button onclick="showPage('notifications')" id="navbtn-notifications">🔔 <span id="nav-count">0</span></button>
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
@@ -159,12 +169,12 @@ footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);fo
 <div class="grid-2">
  <div class="card-box">
    <h3 style="margin-bottom:8px">👤 As a Card Owner</h3>
-   <p style="color:var(--muted);font-size:13px;margin-bottom:14px">Report your lost card with safe identifiers. If someone finds a matching card, you receive an instant notification and can verify ownership privately.</p>
+   <p style="color:var(--muted);font-size:13px;margin-bottom:14px">Report your lost card with safe identifiers. If someone finds a matching card, you receive an instant notification and can generate a single-use Handover QR code.</p>
    <button class="btn btn-primary" onclick="showPage('lost')">Report My Lost Card</button>
  </div>
  <div class="card-box">
    <h3 style="margin-bottom:8px">🔎 As a Card Finder</h3>
-   <p style="color:var(--muted);font-size:13px;margin-bottom:14px">Found a debit or credit card? Submit safe identifiers (bank, type, last 4) so CardSafe can search for its owner without exposing private data.</p>
+   <p style="color:var(--muted);font-size:13px;margin-bottom:14px">Found a debit or credit card? Submit safe identifiers (owner name, bank, last 4) so CardSafe can search for its owner and verify handover securely.</p>
    <button class="btn btn-success" onclick="showPage('found')">I Found a Card</button>
  </div>
 </div>
@@ -172,21 +182,20 @@ footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);fo
 
 <!-- LOST CARD -->
 <div id="page-lost" class="page">
-<div class="section-header"><div><h2>Report Lost Card</h2><p>Submit only safe identification details for automated matching.</p></div></div>
-<div class="steps"><div class="step active"><span class="circle">1</span><br>Card Details</div><div class="step active"><span class="circle">2</span><br>Last Known Use</div><div class="step"><span class="circle">3</span><br>Submit</div></div>
+<div class="section-header"><div><h2>Report Lost Card</h2><p>Submit safe identification details for automated matching.</p></div></div>
+<div class="steps"><div class="step active"><span class="circle">1</span><br>Card Details</div><div class="step active"><span class="circle">2</span><br>Owner & Location</div><div class="step"><span class="circle">3</span><br>Submit</div></div>
 <div class="card-box">
 <div class="alert alert-warning">⚠️ Do not enter CVV, PIN, OTP, full 16-digit card number or online-banking password.</div>
 <div class="grid-2">
- <div class="form-group"><label>Bank Name</label><input id="lost-bank" placeholder="State Bank of India"></div>
+ <div class="form-group"><label>Card Owner Name</label><input id="lost-owner-name" placeholder="Name printed on card (e.g. Rahul Verma)"></div>
+ <div class="form-group"><label>Bank Name</label><input id="lost-bank" placeholder="e.g. State Bank of India"></div>
  <div class="form-group"><label>Card Type</label><select id="lost-type"><option value="DEBIT">Visa / Mastercard / RuPay Debit</option><option value="CREDIT">Credit Card</option></select></div>
  <div class="form-group"><label>Last 4 Digits</label><input id="lost-last4" maxlength="4" inputmode="numeric" placeholder="4821"></div>
  <div class="form-group"><label>Date Lost</label><input id="lost-date" type="date"></div>
  <div class="form-group"><label>Last Known Location</label><input id="lost-location" placeholder="College gate / market / ATM"></div>
- <div class="form-group"><label>Last Transaction Merchant (for ownership verification)</label><input id="lost-merchant" placeholder="e.g. Grocery Store"></div>
- <div class="form-group"><label>Last Transaction Amount (optional)</label><input id="lost-amount" placeholder="e.g. 450"></div>
- <div class="form-group"><label>Last Transaction Date (optional)</label><input id="lost-txn-date" type="date"></div>
 </div>
 <div class="form-group"><label>Additional Description</label><textarea id="lost-description" placeholder="Any safe notes, e.g. blue card holder, stickers, or approximate time."></textarea></div>
+<div class="form-group"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="lost-confirm" style="width:auto;height:auto"> I confirm that the above details provided are true and accurate.</label></div>
 <button class="btn btn-danger" onclick="submitLost()">🔒 Submit Lost Card Report</button>
 </div>
 </div>
@@ -204,8 +213,12 @@ footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);fo
 <div class="alert alert-info">For your safety and privacy, do not enter full card numbers, CVV, PIN, OTP or account passwords.</div>
 <div class="grid-2">
  <div class="form-group">
+  <label>Card Owner Name</label>
+  <input id="found-owner-name" placeholder="Name printed on front of card (if visible)">
+ </div>
+ <div class="form-group">
   <label>Bank Name</label>
-  <input id="found-bank" placeholder="State Bank of India">
+  <input id="found-bank" placeholder="e.g. State Bank of India / HDFC Bank">
  </div>
  <div class="form-group">
   <label>Card Type</label>
@@ -217,6 +230,10 @@ footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);fo
  <div class="form-group">
   <label>Last 4 Digits</label>
   <input id="found-last4" maxlength="4" minlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="4821">
+ </div>
+ <div class="form-group">
+  <label>Expiry Date</label>
+  <input id="found-expiry" placeholder="MM/YY (e.g. 08/28)">
  </div>
  <div class="form-group">
   <label>Date Found</label>
@@ -231,13 +248,14 @@ footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);fo
  <label>Description (Optional)</label>
  <textarea id="found-description" placeholder="Add any safe details about where or how you found the card (e.g. dropped on counter, handed to security desk)."></textarea>
 </div>
+<div class="form-group" style="grid-column:span 2"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="found-confirm" style="width:auto;height:auto"> I confirm that the above details provided are true and accurate.</label></div>
 <button class="btn btn-success" onclick="submitFound()">🔎 Search for Potential Owner</button>
 </div>
 </div>
 
 <!-- MATCHES -->
 <div id="page-matches" class="page">
-<div class="section-header"><div><h2>Potential Matches</h2><p>Matches are potential until ownership verification is completed.</p></div><button class="btn btn-outline btn-sm" onclick="loadAll()">🔄 Refresh</button></div>
+<div class="section-header"><div><h2>Potential Matches & Handover</h2><p>Coordinate return and verify in-person physical handovers securely via single-use QR codes.</p></div><button class="btn btn-outline btn-sm" onclick="loadAll()">🔄 Refresh</button></div>
 <div id="matches-list"></div>
 </div>
 
@@ -256,25 +274,60 @@ footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);fo
 </div>
 </div>
 
-<!-- TRANSACTIONS -->
-<div id="page-transactions" class="page">
-<div class="section-header"><div><h2>Private Transaction Verification</h2><p>Transaction records are used exclusively to verify rightful card ownership.</p></div></div>
-<div class="alert alert-warning">🔐 Previous transactions are an ownership-verification factor stored privately, never shown to card finders.</div>
-<div class="card-box">
-<table><thead><tr><th>Date</th><th>Card</th><th>Merchant</th><th>Amount</th><th>Status</th></tr></thead><tbody id="txn-body"></tbody></table>
-</div>
-</div>
-
 <!-- NOTIFICATIONS -->
 <div id="page-notifications" class="page">
 <div class="section-header"><div><h2>🔔 Notifications</h2><p>Potential matches, verification requests, and recovery updates.</p></div><button class="btn btn-outline btn-sm" onclick="markRead()">Mark all read</button></div>
 <div class="card-box" id="notifications-list"></div>
 </div>
 
+<!-- OWNER QR CODE MODAL -->
+<div id="owner-qr-modal" class="modal hidden">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeOwnerQRModal()">×</button>
+    <div style="font-size:32px">📱</div>
+    <h3 style="margin-top:6px">Handover QR Code</h3>
+    <p style="color:var(--muted);font-size:12px;margin:6px 0 14px">Show this QR code or 6-digit PIN to the Finder during physical handover.</p>
+    
+    <div class="timer-badge" id="owner-qr-timer">⏳ Valid for 30 minutes (Single-Use)</div>
+    
+    <div class="qr-frame" id="owner-qr-container"></div>
+    
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Verification Code</div>
+    <div class="token-code" id="owner-qr-code-text">CS-0000</div>
+    
+    <div id="owner-qr-status-msg" class="alert alert-info" style="margin-top:12px;font-size:12px">
+      Waiting for finder to scan or enter code...
+    </div>
+  </div>
+</div>
+
+<!-- FINDER QR SCANNER / VERIFY MODAL -->
+<div id="finder-verify-modal" class="modal hidden">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeFinderVerifyModal()">×</button>
+    <div style="font-size:32px">📷</div>
+    <h3 style="margin-top:6px">Verify Card Handover</h3>
+    <p style="color:var(--muted);font-size:12px;margin:6px 0 14px">Scan the Owner's QR code or enter the 6-character code shown on their phone:</p>
+    
+    <div id="finder-qr-reader" style="width:100%;max-width:280px;margin:10px auto;border-radius:10px;overflow:hidden;display:none"></div>
+    
+    <div class="form-group" style="margin-top:14px">
+      <input id="finder-code-input" placeholder="e.g. CS-7842" style="text-align:center;font-size:20px;font-weight:900;letter-spacing:3px;text-transform:uppercase;max-width:260px;margin:0 auto;display:block">
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+      <button class="btn btn-outline btn-sm" id="btn-toggle-camera" onclick="toggleCameraScanner()">📷 Camera Scan</button>
+      <button class="btn btn-success btn-sm" onclick="submitFinderVerification()">Verify Handover</button>
+    </div>
+    
+    <div id="finder-verify-alert" class="alert hidden" style="margin-top:14px;font-size:12px"></div>
+  </div>
+</div>
+
 <footer>CardSafe Prototype • Two-Way Lost & Found Security • Privacy-First Architecture</footer>
 
 <script>
-// Auto-detect API location (works whether served directly or via file:/// or other port)
+// Auto-detect API location (works on Render, localhost, Live Server, and file:///)
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const API = (!window.location.protocol.startsWith('http'))
   ? 'http://localhost:5000/api'
@@ -289,30 +342,11 @@ let state = {
   matches: [],
   notifications: [],
   messages: [],
-  activeMatch: null
+  activeMatch: null,
+  activeQRMatch: null,
+  activeQRTimer: null,
+  activeQRCheckTimer: null
 };
-
-// Check backend health on start
-async function checkBackend() {
-  try {
-    const res = await fetch(API + '/health');
-    const data = await res.json();
-    const statusBadge = document.getElementById('server-status');
-    if (data.ok && data.database === 'connected') {
-      statusBadge.textContent = 'DB Connected';
-      statusBadge.className = 'badge badge-green';
-    } else {
-      statusBadge.textContent = 'DB Unavailable';
-      statusBadge.className = 'badge badge-red';
-    }
-  } catch (e) {
-    const statusBadge = document.getElementById('server-status');
-    if (statusBadge) {
-      statusBadge.textContent = 'Backend Offline';
-      statusBadge.className = 'badge badge-red';
-    }
-  }
-}
 
 /* ---------- API HELPER ---------- */
 
@@ -474,7 +508,8 @@ function logout() {
     matches: [],
     notifications: [],
     messages: [],
-    activeMatch: null
+    activeMatch: null,
+    activeQRMatch: null
   };
 
   document.getElementById("nav-public").classList.remove("hidden");
@@ -500,7 +535,6 @@ function showPage(id) {
   if (navBtn) navBtn.classList.add("active");
 
   if (state.logged) {
-    if (id === 'transactions') loadTransactions();
     if (id === 'matches') loadMatches();
     if (id === 'notifications') loadNotifications();
   }
@@ -509,15 +543,19 @@ function showPage(id) {
 /* ---------- SUBMIT LOST CARD ---------- */
 
 async function submitLost() {
+  const ownerName = document.getElementById("lost-owner-name").value.trim();
   const bank = document.getElementById("lost-bank").value.trim();
   const typeValue = document.getElementById("lost-type").value;
   const last4 = document.getElementById("lost-last4").value.trim();
   const date = document.getElementById("lost-date").value;
   const location = document.getElementById("lost-location").value.trim();
   const description = document.getElementById("lost-description").value.trim();
-  const merchant = document.getElementById("lost-merchant").value.trim();
-  const amount = document.getElementById("lost-amount").value.trim();
-  const txnDate = document.getElementById("lost-txn-date").value;
+  const confirmed = document.getElementById("lost-confirm").checked;
+
+  if (!confirmed) {
+    alert("Please confirm that the details provided are true and accurate by checking the confirmation box.");
+    return;
+  }
 
   if (!bank || !/^\d{4}$/.test(last4) || !date || !location) {
     alert("Please enter bank name, valid 4-digit last4, date lost, and location.");
@@ -530,19 +568,17 @@ async function submitLost() {
     // 1. Create or register the card entry
     const card = await api("/cards", {
       method: "POST",
-      body: JSON.stringify({ bankName: bank, cardType, last4 })
+      body: JSON.stringify({ bankName: bank, cardType, last4, ownerName })
     });
 
-    // 2. Report the card as lost with optional verification transaction
+    // 2. Report the card as lost
     const lostRes = await api(`/cards/${card.id}/lost`, {
       method: "POST",
       body: JSON.stringify({
         lostLocation: location,
         lostAt: new Date(date + "T12:00:00").toISOString(),
         description: description,
-        merchantName: merchant,
-        amount: amount,
-        transactionDate: txnDate
+        ownerName: ownerName
       })
     });
 
@@ -553,9 +589,9 @@ async function submitLost() {
     }
 
     clearInputs([
-      "lost-bank", "lost-last4", "lost-date", "lost-location",
-      "lost-merchant", "lost-amount", "lost-txn-date", "lost-description"
+      "lost-owner-name", "lost-bank", "lost-last4", "lost-date", "lost-location", "lost-description"
     ]);
+    document.getElementById("lost-confirm").checked = false;
 
     await loadAll();
     showPage("matches");
@@ -567,12 +603,20 @@ async function submitLost() {
 /* ---------- SUBMIT FOUND CARD ---------- */
 
 async function submitFound() {
+  const ownerName = document.getElementById("found-owner-name").value.trim();
   const bank = document.getElementById("found-bank").value.trim();
   const typeValue = document.getElementById("found-type").value;
   const last4 = document.getElementById("found-last4").value.trim();
+  const expiry = document.getElementById("found-expiry").value.trim();
   const date = document.getElementById("found-date").value;
   const location = document.getElementById("found-location").value.trim();
   const description = document.getElementById("found-description").value.trim();
+  const confirmed = document.getElementById("found-confirm").checked;
+
+  if (!confirmed) {
+    alert("Please confirm that the details provided are true and accurate by checking the confirmation box.");
+    return;
+  }
 
   if (!bank || !/^\d{4}$/.test(last4) || !location) {
     alert("Please enter bank name, valid 4-digit last4, and found location.");
@@ -591,7 +635,9 @@ async function submitFound() {
         last4,
         foundLocation: location,
         foundAt: new Date(foundDate + "T12:00:00").toISOString(),
-        description: description
+        description: description,
+        ownerName: ownerName,
+        expiryDate: expiry
       })
     });
 
@@ -601,7 +647,8 @@ async function submitFound() {
       alert("✅ Found-card report recorded. We will alert you when the owner reports it.");
     }
 
-    clearInputs(["found-bank", "found-last4", "found-date", "found-location", "found-description"]);
+    clearInputs(["found-owner-name", "found-bank", "found-last4", "found-expiry", "found-date", "found-location", "found-description"]);
+    document.getElementById("found-confirm").checked = false;
 
     await loadAll();
     showPage("matches");
@@ -643,8 +690,11 @@ function renderMatches() {
     const userRoleBadge = isOwner ? '<span class="badge badge-blue">You are the Owner</span>' : (isFinder ? '<span class="badge badge-green">You are the Finder</span>' : '');
 
     let statusBadgeClass = 'badge-orange';
-    if (match.status === 'OWNER_VERIFIED') statusBadgeClass = 'badge-green';
-    if (match.status === 'RECOVERY_IN_PROGRESS') statusBadgeClass = 'badge-blue';
+    if (match.status === 'HANDOVER_VERIFIED' || match.status === 'RETURNED') statusBadgeClass = 'badge-green';
+    else if (match.status === 'OWNER_VERIFIED') statusBadgeClass = 'badge-blue';
+
+    const cardOwnerDisplay = match.lost_owner_name || match.found_owner_name || 'Not provided';
+    const isHandedOver = (match.status === 'HANDOVER_VERIFIED' || match.status === 'RETURNED');
 
     return `
       <div class="match-card">
@@ -653,7 +703,7 @@ function renderMatches() {
             <b>💳 ${escapeHTML(match.bank_name || 'Card')} (•••• ${escapeHTML(match.last4 || '****')})</b>
             ${userRoleBadge}
             <br>
-            <span style="color:var(--muted);font-size:12px">Match ID: ${escapeHTML(match.id)}</span>
+            <span style="color:var(--muted);font-size:12px">Match ID: ${escapeHTML(match.id.slice(0, 8))}...</span>
           </div>
           <div class="score">${match.score}% Match</div>
         </div>
@@ -661,60 +711,255 @@ function renderMatches() {
         <div class="divider"></div>
 
         <div class="grid-2" style="font-size:13px">
+          <div><b>Card Owner Name:</b> ${escapeHTML(cardOwnerDisplay)}</div>
+          <div><b>Expiry Date:</b> ${escapeHTML(match.expiry_date || 'N/A')}</div>
           <div><b>Lost Location:</b> ${escapeHTML(match.lost_location || 'N/A')}</div>
           <div><b>Found Location:</b> ${escapeHTML(match.found_location || 'N/A')}</div>
           <div><b>Status:</b> <span class="badge ${statusBadgeClass}">${escapeHTML(String(match.status).replaceAll("_", " "))}</span></div>
           <div><b>Card Type:</b> ${escapeHTML(match.card_type || 'DEBIT')}</div>
         </div>
 
-        ${isOwner && match.status === 'VERIFICATION_PENDING' ? `
-          <div class="verify-box">
-            <b>🛡️ Two-Way Ownership Verification:</b>
-            <p style="font-size:12px;color:var(--muted);margin:4px 0 8px">To verify you own this card, enter the merchant name of a recent transaction (e.g. Grocery Store, College Canteen):</p>
-            <div style="display:flex;gap:8px">
-              <input id="verify-merchant-${match.id}" placeholder="Enter recent merchant name..." style="max-width:320px;padding:6px 10px;font-size:13px">
-              <button class="btn btn-primary btn-sm" onclick="verifyOwnership('${match.id}')">Verify Ownership</button>
-            </div>
+        ${isHandedOver ? `
+          <div class="alert alert-success" style="margin-top:14px;font-weight:700">
+            🎉 Card Handover Complete & Verified! The card has been safely returned.
           </div>
         ` : ''}
 
-        <div style="display:flex;gap:8px;margin-top:14px;align-items:center">
-          <button class="btn btn-primary btn-sm" onclick="openMatchChat('${match.id}', '${escapeHTML(match.bank_name || 'Card')} •••• ${escapeHTML(match.last4 || '')}')">
+        <div style="display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap">
+          ${isOwner && !isHandedOver ? `
+            <button class="btn btn-primary btn-sm" onclick="showOwnerQRModal('${match.id}')">
+              📱 Generate Handover QR Code
+            </button>
+          ` : ''}
+
+          ${isFinder && !isHandedOver ? `
+            <button class="btn btn-success btn-sm" onclick="showFinderVerifyModal('${match.id}')">
+              📷 Scan QR / Enter Handover Code
+            </button>
+          ` : ''}
+
+          <button class="btn btn-outline btn-sm" onclick="openMatchChat('${match.id}', '${escapeHTML(match.bank_name || 'Card')} •••• ${escapeHTML(match.last4 || '')}')">
             💬 Open Secure Conversation
           </button>
-          ${match.status === 'OWNER_VERIFIED' ? '<span class="badge badge-green">✓ Ownership Confirmed</span>' : ''}
         </div>
       </div>
     `;
   }).join("");
 }
 
-/* ---------- VERIFY OWNERSHIP ---------- */
+/* ---------- UNIQUE QR VERIFICATION HANDOVER SYSTEM ---------- */
 
-async function verifyOwnership(matchId) {
-  const input = document.getElementById(`verify-merchant-${matchId}`);
-  const merchantName = input ? input.value.trim() : '';
+// 1. OWNER: Show Handover QR Modal & Generate Single-Use Token
+async function showOwnerQRModal(matchId) {
+  state.activeQRMatch = matchId;
+  const modal = document.getElementById("owner-qr-modal");
+  const container = document.getElementById("owner-qr-container");
+  const codeText = document.getElementById("owner-qr-code-text");
+  const statusMsg = document.getElementById("owner-qr-status-msg");
+  const timerBadge = document.getElementById("owner-qr-timer");
 
-  if (!merchantName) {
-    alert("Please enter a merchant name from a recent transaction to verify.");
+  container.innerHTML = "Generating secure QR...";
+  codeText.textContent = "Loading...";
+  statusMsg.className = "alert alert-info";
+  statusMsg.textContent = "Waiting for finder to scan or enter code...";
+  modal.classList.remove("hidden");
+
+  try {
+    const data = await api(`/reports/matches/${matchId}/generate-qr`, { method: "POST" });
+    
+    // Display short 6-character code
+    codeText.textContent = data.code;
+    
+    // Render QR Code
+    container.innerHTML = "";
+    const qrData = JSON.stringify({ matchId, code: data.code, token: data.token });
+    
+    if (typeof QRCode !== "undefined") {
+      new QRCode(container, {
+        text: qrData,
+        width: 180,
+        height: 180,
+        colorDark: "#0f172a",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } else {
+      // Fallback SVG / image QR
+      container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrData)}" alt="QR Code" style="width:180px;height:180px">`;
+    }
+
+    // Start 30-min countdown timer
+    let remainingSeconds = Math.max(0, Math.floor((new Date(data.expiresAt) - Date.now()) / 1000));
+    if (state.activeQRTimer) clearInterval(state.activeQRTimer);
+    
+    state.activeQRTimer = setInterval(() => {
+      remainingSeconds--;
+      if (remainingSeconds <= 0) {
+        clearInterval(state.activeQRTimer);
+        timerBadge.textContent = "⚠️ Expired. Please close and re-generate.";
+        timerBadge.style.color = "var(--danger)";
+      } else {
+        const m = Math.floor(remainingSeconds / 60);
+        const s = remainingSeconds % 60;
+        timerBadge.textContent = `⏳ Expires in ${m}:${s < 10 ? '0' : ''}${s} (Single-Use Token)`;
+      }
+    }, 1000);
+
+    // Active live polling to auto-detect when Finder completes verification
+    if (state.activeQRCheckTimer) clearInterval(state.activeQRCheckTimer);
+    state.activeQRCheckTimer = setInterval(async () => {
+      try {
+        if (!state.activeQRMatch || modal.classList.contains("hidden")) {
+          clearInterval(state.activeQRCheckTimer);
+          return;
+        }
+        const status = await api(`/reports/matches/${state.activeQRMatch}/qr-status`);
+        if (status.isVerified || status.isTokenUsed) {
+          clearInterval(state.activeQRCheckTimer);
+          clearInterval(state.activeQRTimer);
+          statusMsg.className = "alert alert-success";
+          statusMsg.innerHTML = "<b>🎉 Handover Verified!</b> The card has been confirmed safely returned.";
+          codeText.style.color = "var(--success)";
+          await loadAll();
+        }
+      } catch (e) {}
+    }, 2500);
+
+  } catch (err) {
+    container.innerHTML = `<span style="color:var(--danger)">Error: ${escapeHTML(err.message)}</span>`;
+    codeText.textContent = "Error";
+  }
+}
+
+function closeOwnerQRModal() {
+  document.getElementById("owner-qr-modal").classList.add("hidden");
+  if (state.activeQRTimer) clearInterval(state.activeQRTimer);
+  if (state.activeQRCheckTimer) clearInterval(state.activeQRCheckTimer);
+  state.activeQRMatch = null;
+}
+
+// 2. FINDER: Show Verification Modal & Handle Camera / Manual Code
+let html5QrCodeScanner = null;
+
+function showFinderVerifyModal(matchId) {
+  state.activeQRMatch = matchId;
+  const modal = document.getElementById("finder-verify-modal");
+  const alertBox = document.getElementById("finder-verify-alert");
+  const codeInput = document.getElementById("finder-code-input");
+  
+  codeInput.value = "";
+  alertBox.className = "alert hidden";
+  modal.classList.remove("hidden");
+}
+
+function closeFinderVerifyModal() {
+  document.getElementById("finder-verify-modal").classList.add("hidden");
+  stopCameraScanner();
+  state.activeQRMatch = null;
+}
+
+// Toggle Live Camera Scanner
+async function toggleCameraScanner() {
+  const readerDiv = document.getElementById("finder-qr-reader");
+  const btn = document.getElementById("btn-toggle-camera");
+
+  if (html5QrCodeScanner) {
+    stopCameraScanner();
+    return;
+  }
+
+  if (typeof Html5Qrcode === "undefined") {
+    alert("Camera scanning library is loading or unavailable. Please enter the 6-character code manually.");
+    return;
+  }
+
+  readerDiv.style.display = "block";
+  btn.textContent = "🛑 Stop Camera";
+  
+  try {
+    html5QrCodeScanner = new Html5Qrcode("finder-qr-reader");
+    await html5QrCodeScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 220, height: 220 } },
+      (decodedText) => {
+        // Scanned successfully!
+        handleScannedText(decodedText);
+        stopCameraScanner();
+      },
+      () => {}
+    );
+  } catch (err) {
+    readerDiv.style.display = "none";
+    btn.textContent = "📷 Camera Scan";
+    alert("Camera permission denied or camera not found. Please enter the 6-character code manually.");
+  }
+}
+
+function stopCameraScanner() {
+  const readerDiv = document.getElementById("finder-qr-reader");
+  const btn = document.getElementById("btn-toggle-camera");
+  if (html5QrCodeScanner) {
+    html5QrCodeScanner.stop().catch(() => {}).then(() => {
+      html5QrCodeScanner.clear();
+      html5QrCodeScanner = null;
+    });
+  }
+  if (readerDiv) readerDiv.style.display = "none";
+  if (btn) btn.textContent = "📷 Camera Scan";
+}
+
+function handleScannedText(text) {
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed.code) {
+      document.getElementById("finder-code-input").value = parsed.code;
+      submitFinderVerification(parsed.code || parsed.token);
+      return;
+    }
+  } catch (e) {}
+  document.getElementById("finder-code-input").value = text.trim();
+  submitFinderVerification(text.trim());
+}
+
+async function submitFinderVerification(providedCode) {
+  const code = providedCode || document.getElementById("finder-code-input").value.trim();
+  const alertBox = document.getElementById("finder-verify-alert");
+
+  if (!code) {
+    alertBox.className = "alert alert-danger";
+    alertBox.textContent = "Please enter the verification code or scan the owner's QR.";
+    alertBox.classList.remove("hidden");
+    return;
+  }
+
+  if (!state.activeQRMatch) {
+    alertBox.className = "alert alert-danger";
+    alertBox.textContent = "No match selected. Please re-open.";
+    alertBox.classList.remove("hidden");
     return;
   }
 
   try {
-    const res = await api(`/reports/matches/${matchId}/verify-transaction`, {
+    alertBox.className = "alert alert-info";
+    alertBox.textContent = "Verifying single-use token on secure server...";
+    alertBox.classList.remove("hidden");
+
+    const res = await api(`/reports/matches/${state.activeQRMatch}/verify-qr`, {
       method: "POST",
-      body: JSON.stringify({ merchantName })
+      body: JSON.stringify({ code })
     });
 
-    if (res.verified) {
-      alert("🎉 " + res.message);
-    } else {
-      alert("❌ " + res.message);
-    }
+    alertBox.className = "alert alert-success";
+    alertBox.textContent = res.message || "✅ Card Handover Verified Successfully!";
 
     await loadAll();
+    setTimeout(() => {
+      closeFinderVerifyModal();
+    }, 2200);
+
   } catch (err) {
-    alert("Verification failed: " + err.message);
+    alertBox.className = "alert alert-danger";
+    alertBox.textContent = err.message || "Verification failed.";
   }
 }
 
@@ -801,44 +1046,6 @@ function renderChat() {
   }).join("");
 
   box.scrollTop = box.scrollHeight;
-}
-
-/* ---------- TRANSACTIONS ---------- */
-
-async function loadTransactions() {
-  try {
-    const list = await api("/cards/mine/transactions");
-    renderTransactions(list);
-  } catch (e) {
-    // Fallback sample data if no cards registered yet
-    renderTransactions([]);
-  }
-}
-
-function renderTransactions(list) {
-  const body = document.getElementById("txn-body");
-  if (!body) return;
-
-  if (!list || list.length === 0) {
-    body.innerHTML = `
-      <tr>
-        <td colspan="5" style="text-align:center;color:var(--muted);padding:20px">
-          No transactions found for your cards yet. They are recorded when you submit a lost card with verification details.
-        </td>
-      </tr>
-    `;
-    return;
-  }
-
-  body.innerHTML = list.map(tx => `
-    <tr>
-      <td>${escapeHTML(new Date(tx.transaction_date).toISOString().slice(0, 10))}</td>
-      <td><b>${escapeHTML(tx.bank_name || 'Card')} (•••• ${escapeHTML(tx.last4 || '')})</b></td>
-      <td><b>${escapeHTML(tx.merchant_name)}</b></td>
-      <td><b>₹${escapeHTML(Number(tx.amount).toFixed(2))}</b></td>
-      <td><span class="badge badge-green">Verified on File</span></td>
-    </tr>
-  `).join("");
 }
 
 /* ---------- NOTIFICATIONS ---------- */
@@ -952,7 +1159,6 @@ const foundDateEl = document.getElementById("found-date");
 if (lostDateEl) lostDateEl.value = todayStr;
 if (foundDateEl) foundDateEl.value = todayStr;
 
-checkBackend();
 restoreSession();
 </script>
 </body>
