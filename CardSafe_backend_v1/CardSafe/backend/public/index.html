@@ -191,8 +191,9 @@ footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);fo
  <div class="form-group"><label>Bank Name</label><input id="lost-bank" placeholder="e.g. State Bank of India"></div>
  <div class="form-group"><label>Card Type</label><select id="lost-type"><option value="DEBIT">Visa / Mastercard / RuPay Debit</option><option value="CREDIT">Credit Card</option></select></div>
  <div class="form-group"><label>Last 4 Digits</label><input id="lost-last4" maxlength="4" inputmode="numeric" placeholder="4821"></div>
+ <div class="form-group"><label>Expiry Date</label><input id="lost-expiry" type="month"></div>
  <div class="form-group"><label>Date Lost</label><input id="lost-date" type="date"></div>
- <div class="form-group"><label>Last Known Location</label><input id="lost-location" placeholder="College gate / market / ATM"></div>
+ <div class="form-group" style="grid-column:span 2"><label>Last Known Location</label><input id="lost-location" placeholder="College gate / market / ATM"></div>
 </div>
 <div class="form-group"><label>Additional Description</label><textarea id="lost-description" placeholder="Any safe notes, e.g. blue card holder, stickers, or approximate time."></textarea></div>
 <div class="form-group"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:600;cursor:pointer"><input type="checkbox" id="lost-confirm" style="width:auto;height:auto"> I confirm that the above details provided are true and accurate.</label></div>
@@ -233,7 +234,7 @@ footer{max-width:1100px;margin:30px auto 20px;padding:20px;color:var(--muted);fo
  </div>
  <div class="form-group">
   <label>Expiry Date</label>
-  <input id="found-expiry" placeholder="MM/YY (e.g. 08/28)">
+  <input id="found-expiry" type="month">
  </div>
  <div class="form-group">
   <label>Date Found</label>
@@ -547,6 +548,7 @@ async function submitLost() {
   const bank = document.getElementById("lost-bank").value.trim();
   const typeValue = document.getElementById("lost-type").value;
   const last4 = document.getElementById("lost-last4").value.trim();
+  const expiry = document.getElementById("lost-expiry").value.trim();
   const date = document.getElementById("lost-date").value;
   const location = document.getElementById("lost-location").value.trim();
   const description = document.getElementById("lost-description").value.trim();
@@ -568,7 +570,7 @@ async function submitLost() {
     // 1. Create or register the card entry
     const card = await api("/cards", {
       method: "POST",
-      body: JSON.stringify({ bankName: bank, cardType, last4, ownerName })
+      body: JSON.stringify({ bankName: bank, cardType, last4, ownerName, expiryDate: expiry })
     });
 
     // 2. Report the card as lost
@@ -578,7 +580,8 @@ async function submitLost() {
         lostLocation: location,
         lostAt: new Date(date + "T12:00:00").toISOString(),
         description: description,
-        ownerName: ownerName
+        ownerName: ownerName,
+        expiryDate: expiry
       })
     });
 
@@ -589,7 +592,7 @@ async function submitLost() {
     }
 
     clearInputs([
-      "lost-owner-name", "lost-bank", "lost-last4", "lost-date", "lost-location", "lost-description"
+      "lost-owner-name", "lost-bank", "lost-last4", "lost-expiry", "lost-date", "lost-location", "lost-description"
     ]);
     document.getElementById("lost-confirm").checked = false;
 
@@ -712,7 +715,7 @@ function renderMatches() {
 
         <div class="grid-2" style="font-size:13px">
           <div><b>Card Owner Name:</b> ${escapeHTML(cardOwnerDisplay)}</div>
-          <div><b>Expiry Date:</b> ${escapeHTML(match.expiry_date || 'N/A')}</div>
+          <div><b>Expiry Date:</b> ${formatExpiry(match.expiry_date || match.found_expiry_date || match.lost_expiry_date)}</div>
           <div><b>Lost Location:</b> ${escapeHTML(match.lost_location || 'N/A')}</div>
           <div><b>Found Location:</b> ${escapeHTML(match.found_location || 'N/A')}</div>
           <div><b>Status:</b> <span class="badge ${statusBadgeClass}">${escapeHTML(String(match.status).replaceAll("_", " "))}</span></div>
@@ -1131,6 +1134,15 @@ function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, c => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
   })[c]);
+}
+
+function formatExpiry(val) {
+  if (!val) return 'N/A';
+  if (/^\d{4}-\d{2}/.test(val)) {
+    const parts = val.split('-');
+    return `${parts[1]}/${parts[0]}`;
+  }
+  return escapeHTML(val);
 }
 
 /* ---------- SESSION RESTORATION ---------- */
