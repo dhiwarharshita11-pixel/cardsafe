@@ -40,9 +40,10 @@ r.get('/matches', auth, async (req, res) => {
   try {
     const rows = (await query(`
       SELECT m.*,
-             l.lost_location, l.lost_at, l.owner_id, l.owner_name as lost_owner_name,
+             l.lost_location, l.lost_at, l.owner_id, l.owner_name as lost_owner_name, l.expiry_date as lost_expiry_date,
              f.found_location, f.found_at, f.finder_id, f.bank_name, f.card_type, f.last4,
-             f.owner_name as found_owner_name, f.expiry_date
+             f.owner_name as found_owner_name, f.expiry_date as found_expiry_date,
+             COALESCE(f.expiry_date, l.expiry_date) as expiry_date
       FROM matches m
       JOIN lost_card_reports l ON l.id = m.lost_report_id
       JOIN found_card_reports f ON f.id = m.found_report_id
@@ -61,9 +62,10 @@ r.get('/matches/mine', auth, async (req, res) => {
   try {
     const rows = (await query(`
       SELECT m.*,
-             l.lost_location, l.lost_at, l.owner_id, l.owner_name as lost_owner_name,
+             l.lost_location, l.lost_at, l.owner_id, l.owner_name as lost_owner_name, l.expiry_date as lost_expiry_date,
              f.found_location, f.found_at, f.finder_id, f.bank_name, f.card_type, f.last4,
-             f.owner_name as found_owner_name, f.expiry_date
+             f.owner_name as found_owner_name, f.expiry_date as found_expiry_date,
+             COALESCE(f.expiry_date, l.expiry_date) as expiry_date
       FROM matches m
       JOIN lost_card_reports l ON l.id = m.lost_report_id
       JOIN found_card_reports f ON f.id = m.found_report_id
