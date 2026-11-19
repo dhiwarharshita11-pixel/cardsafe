@@ -67,11 +67,6 @@ app.post('/api/found-cards', (req, res, next) => {
 
 app.use('/api/matches', reportRoutes);
 
-app.get('/api/transactions', (req, res, next) => {
-  req.url = '/mine/transactions';
-  cardRoutes(req, res, next);
-});
-
 // Serve frontend statically
 const publicDir = path.resolve(__dirname, '../public');
 const legacyFrontendDir = path.resolve(__dirname, '../../../../Cardsafe Frontend');
@@ -105,6 +100,27 @@ app.use((err, req, res, next) => {
 // Automatic schema & seed initialization on startup
 async function initDatabase() {
   try {
+    // 1. Run migrations for new columns and tables (Idempotent)
+    await query(`
+      CREATE TABLE IF NOT EXISTS verification_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+        owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token VARCHAR(64) UNIQUE NOT NULL,
+        code VARCHAR(12) NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        is_used BOOLEAN NOT NULL DEFAULT FALSE,
+        used_at TIMESTAMPTZ,
+        used_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      ALTER TABLE IF EXISTS cards ADD COLUMN IF NOT EXISTS owner_name VARCHAR(120);
+      ALTER TABLE IF EXISTS lost_card_reports ADD COLUMN IF NOT EXISTS owner_name VARCHAR(120);
+      ALTER TABLE IF EXISTS found_card_reports ADD COLUMN IF NOT EXISTS owner_name VARCHAR(120);
+      ALTER TABLE IF EXISTS found_card_reports ADD COLUMN IF NOT EXISTS expiry_date VARCHAR(20);
+    `);
+
+    // 2. Full schema check if initial setup
     const schemaPaths = [
       path.resolve(__dirname, '../database/schema.sql'),
       path.resolve(__dirname, '../../database/schema.sql'),
@@ -134,7 +150,7 @@ async function initDatabase() {
       console.log('✅ Default demo accounts seeded');
     }
   } catch (err) {
-    console.log('Database init check:', err.message);
+    console.log('Database init notice:', err.message);
   }
 }
 
