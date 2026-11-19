@@ -14,12 +14,23 @@ export async function matchFoundReport(foundReportId) {
   const matches = [];
   for (const item of lost) {
     let score = 0;
-    if (item.bank_name.trim().toLowerCase() === found.bank_name.trim().toLowerCase()) score += 35;
+    if (item.bank_name.trim().toLowerCase() === found.bank_name.trim().toLowerCase()) score += 30;
     if (item.card_type.trim().toLowerCase() === found.card_type.trim().toLowerCase()) score += 20;
     if (item.last4 === found.last4) score += 35;
-    if (item.lost_location.trim().toLowerCase() === found.found_location.trim().toLowerCase()) score += 10;
+    if (item.lost_location && found.found_location && item.lost_location.trim().toLowerCase() === found.found_location.trim().toLowerCase()) score += 5;
 
-    if (score >= 70) {
+    // Check Cardholder / Owner Name match if provided
+    if (item.owner_name && found.owner_name) {
+      const oLost = item.owner_name.trim().toLowerCase();
+      const oFound = found.owner_name.trim().toLowerCase();
+      if (oLost === oFound) {
+        score += 10;
+      } else if (oLost.includes(oFound) || oFound.includes(oLost)) {
+        score += 5;
+      }
+    }
+
+    if (score >= 65) {
       const r = await query(`
         INSERT INTO matches(lost_report_id, found_report_id, score)
         VALUES($1, $2, $3)
@@ -71,12 +82,23 @@ export async function matchLostReport(lostReportId) {
   const matches = [];
   for (const found of foundReports) {
     let score = 0;
-    if (lost.bank_name.trim().toLowerCase() === found.bank_name.trim().toLowerCase()) score += 35;
+    if (lost.bank_name.trim().toLowerCase() === found.bank_name.trim().toLowerCase()) score += 30;
     if (lost.card_type.trim().toLowerCase() === found.card_type.trim().toLowerCase()) score += 20;
     if (lost.last4 === found.last4) score += 35;
-    if (lost.lost_location.trim().toLowerCase() === found.found_location.trim().toLowerCase()) score += 10;
+    if (lost.lost_location && found.found_location && lost.lost_location.trim().toLowerCase() === found.found_location.trim().toLowerCase()) score += 5;
 
-    if (score >= 70) {
+    // Check Cardholder / Owner Name match if provided
+    if (lost.owner_name && found.owner_name) {
+      const oLost = lost.owner_name.trim().toLowerCase();
+      const oFound = found.owner_name.trim().toLowerCase();
+      if (oLost === oFound) {
+        score += 10;
+      } else if (oLost.includes(oFound) || oFound.includes(oLost)) {
+        score += 5;
+      }
+    }
+
+    if (score >= 65) {
       const r = await query(`
         INSERT INTO matches(lost_report_id, found_report_id, score)
         VALUES($1, $2, $3)
