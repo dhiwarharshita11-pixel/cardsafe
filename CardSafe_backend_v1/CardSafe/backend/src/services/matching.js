@@ -14,8 +14,8 @@ export async function matchFoundReport(foundReportId) {
   const matches = [];
   for (const item of lost) {
     let score = 0;
-    if (item.bank_name.trim().toLowerCase() === found.bank_name.trim().toLowerCase()) score += 30;
-    if (item.card_type.trim().toLowerCase() === found.card_type.trim().toLowerCase()) score += 20;
+    if (item.bank_name.trim().toLowerCase() === found.bank_name.trim().toLowerCase()) score += 25;
+    if (item.card_type.trim().toLowerCase() === found.card_type.trim().toLowerCase()) score += 15;
     if (item.last4 === found.last4) score += 35;
     if (item.lost_location && found.found_location && item.lost_location.trim().toLowerCase() === found.found_location.trim().toLowerCase()) score += 5;
 
@@ -29,6 +29,17 @@ export async function matchFoundReport(foundReportId) {
         score += 5;
       }
     }
+
+    // Check Expiry Date match if provided
+    if (item.expiry_date && found.expiry_date) {
+      const eLost = item.expiry_date.trim().slice(0, 7);
+      const eFound = found.expiry_date.trim().slice(0, 7);
+      if (eLost === eFound) {
+        score += 10;
+      }
+    }
+
+    score = Math.min(100, Math.max(0, score));
 
     if (score >= 65) {
       const r = await query(`
@@ -82,8 +93,8 @@ export async function matchLostReport(lostReportId) {
   const matches = [];
   for (const found of foundReports) {
     let score = 0;
-    if (lost.bank_name.trim().toLowerCase() === found.bank_name.trim().toLowerCase()) score += 30;
-    if (lost.card_type.trim().toLowerCase() === found.card_type.trim().toLowerCase()) score += 20;
+    if (lost.bank_name.trim().toLowerCase() === found.bank_name.trim().toLowerCase()) score += 25;
+    if (lost.card_type.trim().toLowerCase() === found.card_type.trim().toLowerCase()) score += 15;
     if (lost.last4 === found.last4) score += 35;
     if (lost.lost_location && found.found_location && lost.lost_location.trim().toLowerCase() === found.found_location.trim().toLowerCase()) score += 5;
 
@@ -97,6 +108,17 @@ export async function matchLostReport(lostReportId) {
         score += 5;
       }
     }
+
+    // Check Expiry Date match if provided
+    if (lost.expiry_date && found.expiry_date) {
+      const eLost = lost.expiry_date.trim().slice(0, 7);
+      const eFound = found.expiry_date.trim().slice(0, 7);
+      if (eLost === eFound) {
+        score += 10;
+      }
+    }
+
+    score = Math.min(100, Math.max(0, score));
 
     if (score >= 65) {
       const r = await query(`
