@@ -115,7 +115,9 @@ async function initDatabase() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       ALTER TABLE IF EXISTS cards ADD COLUMN IF NOT EXISTS owner_name VARCHAR(120);
+      ALTER TABLE IF EXISTS cards ADD COLUMN IF NOT EXISTS expiry_date VARCHAR(20);
       ALTER TABLE IF EXISTS lost_card_reports ADD COLUMN IF NOT EXISTS owner_name VARCHAR(120);
+      ALTER TABLE IF EXISTS lost_card_reports ADD COLUMN IF NOT EXISTS expiry_date VARCHAR(20);
       ALTER TABLE IF EXISTS found_card_reports ADD COLUMN IF NOT EXISTS owner_name VARCHAR(120);
       ALTER TABLE IF EXISTS found_card_reports ADD COLUMN IF NOT EXISTS expiry_date VARCHAR(20);
     `);
